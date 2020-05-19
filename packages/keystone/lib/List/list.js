@@ -499,7 +499,7 @@ module.exports = class List {
           data,
           existingItem,
           operation,
-          { gqlName, itemId: id, context, ...extraInternalData }
+          { gqlName, itemId: id, ...extraInternalData }
         );
         if (!access) {
           restrictedFields.push(field.path);
@@ -516,7 +516,6 @@ module.exports = class List {
   async checkListAccess(context, originalInput, operation, { gqlName, ...extraInternalData }) {
     const access = await context.getListAccessControlForUser(this.key, originalInput, operation, {
       gqlName,
-      context,
       ...extraInternalData,
     });
     if (!access) {
@@ -639,6 +638,30 @@ module.exports = class List {
     );
   }
 
+  gqlQueryResolvers({ schemaName }) {
+    const schemaAccess = this.access[schemaName];
+    let resolvers = {};
+
+    // If set to false, we can confidently remove these resolvers entirely from
+    // the graphql schema
+    if (schemaAccess.read) {
+      resolvers = {
+        [this.gqlNames.listQueryName]: (_, args, context, info) =>
+          this.listQuery(args, context, this.gqlNames.listQueryName, info),
+
+        [this.gqlNames.listQueryMetaName]: (_, args, context, info) =>
+          this.listQueryMeta(args, context, this.gqlNames.listQueryMetaName, info),
+
+        [this.gqlNames.listMetaName]: (_, args, context) => this.listMeta(context),
+
+        [this.gqlNames.itemQueryName]: (_, args, context, info) =>
+          this.itemQuery(args, context, this.gqlNames.itemQueryName, info),
+      };
+    }
+
+    return resolvers;
+  }
+
   async listQuery(args, context, gqlName, info, from) {
     const access = await this.checkListAccess(context, undefined, 'read', { gqlName });
 
@@ -734,22 +757,11 @@ module.exports = class List {
   }
 
 
-  _buildActions(context) {
-    return mapKeys(this.hooksActions, buildQuery => {
-      const _query = buildQuery(context);
-      return (...args) => {
-        console.warn(`query() is deprecated and will be removed in a future release.
-Please use context.executeGraphQL() instead. See https://www.keystonejs.com/discussions/server-side-graphql for details.`);
-        return _query(...args);
-      };
-    });
-  }
-
   async _resolveDefaults({ context, originalInput }) {
     const args = {
       context,
       originalInput,
-      actions: this._buildActions(context),
+      actions: mapKeys(this.hooksActions, hook => hook(context)),
     };
 
     const fieldsWithoutValues = this.fields.filter(
@@ -771,7 +783,7 @@ Please use context.executeGraphQL() instead. See https://www.keystonejs.com/disc
     const args = {
       existingItem,
       context,
-      actions: this._buildActions(context),
+      actions: mapKeys(this.hooksActions, hook => hook(context)),
       operation,
     };
     const fields = this.fields;
@@ -783,7 +795,7 @@ Please use context.executeGraphQL() instead. See https://www.keystonejs.com/disc
     const args = {
       existingItem,
       context,
-      actions: this._buildActions(context),
+      actions: mapKeys(this.hooksActions, hook => hook(context)),
       operation,
     };
     await this._runHook(args, existingItem, 'beforeDelete');
@@ -794,7 +806,7 @@ Please use context.executeGraphQL() instead. See https://www.keystonejs.com/disc
     const args = {
       existingItem,
       context,
-      actions: this._buildActions(context),
+      actions: mapKeys(this.hooksActions, hook => hook(context)),
       operation,
     };
     await this._runHook(args, existingItem, 'afterDelete');
@@ -963,5 +975,6 @@ Please use context.executeGraphQL() instead. See https://www.keystonejs.com/disc
       };
     });
   }
+
 
 };
