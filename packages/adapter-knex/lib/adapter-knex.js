@@ -377,6 +377,8 @@ class KnexListAdapter extends BaseListAdapter {
   }
 
   async _setNullByValue({ tableName, columnName, value }) {
+    // console.log('SET NULL');
+    // console.log({ tableName, columnName, value });
     return this._query()
       .table(tableName)
       .where(columnName, value)
@@ -442,12 +444,14 @@ class KnexListAdapter extends BaseListAdapter {
   }
 
   async _update(id, data) {
+    // console.log('UPDATE');
+    // console.log({ id, data });
     const realData = pick(data, this.realKeys);
-
+    // console.log({ realData });
     // Unset any real 1:1 fields
     await this._unsetOneToOneValues(realData);
     await this._unsetForeignOneToOneValues(data, id);
-
+    // console.log('NEXT');
     // Update the real data
     const query = this._query()
       .table(this.tableName)
@@ -455,15 +459,18 @@ class KnexListAdapter extends BaseListAdapter {
     if (Object.keys(realData).length) {
       query.update(realData);
     }
+    // console.log('A');
     const item = (await query.returning(['id', ...this.realKeys]))[0];
 
+    // console.log('B');
+    // console.log({ data, item });
     // For every many-field, update the many-table
     await this._processNonRealFields(data, async ({ path, value: newValues, adapter }) => {
       const { cardinality, columnName, tableName } = adapter.rel;
       let value;
       // Future task: Is there some way to combine the following three
       // operations into a single query?
-
+      // console.log('a');
       if (cardinality !== '1:1') {
         // Work out what we've currently got
         let matchCol, selectCol;
@@ -482,6 +489,7 @@ class KnexListAdapter extends BaseListAdapter {
             .where(matchCol, item.id)
             .returning(selectCol)
         ).map(x => x[selectCol].toString());
+        // console.log('b');
 
         // Delete what needs to be deleted
         const needsDelete = currentRefIds.filter(x => !newValues.includes(x));
@@ -501,6 +509,7 @@ class KnexListAdapter extends BaseListAdapter {
         }
         value = newValues.filter(id => !currentRefIds.includes(id));
       } else {
+        // console.log('aa');
         // If there are values, update the other side to point to me,
         // otherwise, delete the thing that was pointing to me
         if (newValues === null) {
@@ -508,9 +517,14 @@ class KnexListAdapter extends BaseListAdapter {
           await this._setNullByValue({ tableName, columnName: selectCol, value: item.id });
         }
         value = newValues;
+        // console.log('bbb');
       }
+      // console.log('X');
+      // console.log({ value });
       await this._createOrUpdateField({ value, adapter, itemId: item.id });
+      // console.log('Z');
     });
+    // console.log('C');
     return (await this._itemsQuery({ where: { id: item.id }, first: 1 }))[0] || null;
   }
 
@@ -580,6 +594,7 @@ class KnexListAdapter extends BaseListAdapter {
     }
     // console.log({ results });
     // console.log({ ret });
+    // console.log(ret);
     return ret;
     // console.log({ prismaResult });
     // if (meta) {
@@ -622,9 +637,20 @@ const prismaFilter = ({
       ret.where = {};
     }
     const a = from.fromList.adapter.fieldAdaptersByPath[from.fromField];
-    const { columnName } = a.rel;
-    // console.log({ cardinality, tableName, columnName });
-    ret.where[columnName] = { id: Number(from.fromId) };
+    if (a.rel.cardinality === 'N:N') {
+      // console.log(a.rel);
+      // const { near, far } = from.fromList.adapter._getNearFar(a);
+      // ret.where[]
+      const { near } = from.fromList.adapter._getNearFar(a);
+      // console.log({ near, far });
+
+      const f = near === 'B' ? a.rel.left  : a.rel.right;
+      ret.where[f.path] = { some: { id: Number(from.fromId) } };
+    } else {
+      const { columnName } = a.rel;
+      // console.log({ cardinality, tableName, columnName });
+      ret.where[columnName] = { id: Number(from.fromId) };
+    }
   }
 
   // Add query modifiers as required
@@ -653,6 +679,13 @@ const prismaFilter = ({
       });
     }
   }
+
+  listAdapter.fieldAdapters
+    .filter(a => a.isRelationship && a.rel.cardinality === '1:1' && a.rel.right === a.field)
+    .forEach(({ path, rel }) => {
+      if (!ret.include) ret.include = {};
+      ret.include[path] = true;
+    });
 
   return ret;
 };
@@ -691,7 +724,6 @@ const processWheres = (where, listAdapter) => {
       }
     }
   }
-
   return wheres;
 };
 

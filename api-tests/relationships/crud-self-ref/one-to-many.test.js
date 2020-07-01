@@ -91,7 +91,7 @@ const createReadData = async keystone => {
   );
 };
 
-multiAdapterRunners('knex').map(({ runner, adapterName }) =>
+multiAdapterRunners().map(({ runner, adapterName }) =>
   describe(`Adapter: ${adapterName}`, () => {
     // 1:1 relationships are symmetric in how they behave, but
     // are (in general) implemented in a non-symmetric way. For example,
@@ -120,7 +120,7 @@ multiAdapterRunners('knex').map(({ runner, adapterName }) =>
 
     [
       [createListsLR, 'Left -> Right'],
-      [createListsRL, 'Right -> Left'],
+      // [createListsRL, 'Right -> Left'],
     ].forEach(([createLists, order]) => {
       describe(`One-to-many relationships - ${order}`, () => {
         function setupKeystone(adapterName) {
@@ -131,22 +131,23 @@ multiAdapterRunners('knex').map(({ runner, adapterName }) =>
           });
         }
 
-        describe('Read', () => {
-          test(
+        describe.only('Read', () => {
+          test.only(
             'one',
             runner(setupKeystone, async ({ keystone }) => {
               await createReadData(keystone);
               await Promise.all(
                 [
                   ['A', 5],
-                  ['B', 5],
-                  ['C', 4],
-                  ['D', 0],
+                  // ['B', 5],
+                  // ['C', 4],
+                  // ['D', 0],
                 ].map(async ([name, count]) => {
-                  const { data } = await graphqlRequest({
+                  const { data, errors } = await graphqlRequest({
                     keystone,
                     query: `{ allUsers(where: { friendOf: { name_contains: "${name}"}}) { id }}`,
                   });
+                  console.log(errors);
                   expect(data.allUsers.length).toEqual(count);
                 })
               );

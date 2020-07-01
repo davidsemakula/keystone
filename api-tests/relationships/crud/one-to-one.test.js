@@ -89,7 +89,6 @@ const getCompanyAndLocation = async (keystone, companyId, locationId) => {
     Location(where: { id: "${locationId}"} ) { id company { id } }
   }`,
   });
-  console.log(data);
   return data;
 };
 
@@ -127,7 +126,7 @@ multiAdapterRunners().map(({ runner, adapterName }) =>
 
     [
       [createListsLR, 'Left -> Right'],
-      // [createListsRL, 'Right -> Left'],
+      [createListsRL, 'Right -> Left'],
     ].forEach(([createLists, order]) => {
       describe(`One-to-one relationships - ${order}`, () => {
         function setupKeystone(adapterName) {
@@ -138,8 +137,8 @@ multiAdapterRunners().map(({ runner, adapterName }) =>
           });
         }
 
-        describe.only('Read', () => {
-          test.only(
+        describe('Read', () => {
+          test(
             'Where A',
             runner(setupKeystone, async ({ keystone }) => {
               await createInitialData(keystone);

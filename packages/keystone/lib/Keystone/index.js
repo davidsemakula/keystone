@@ -480,21 +480,25 @@ module.exports = class Keystone {
       let columnName;
       if (cardinality === 'N:N') {
         tableName = right
-          ? `${left.listKey}_${left.path}_${right.listKey}_${right.path}`
-          : `${left.listKey}_${left.path}_many`;
+          ? `_${left.listKey}_${left.path}_${right.listKey}_${right.path}`
+          : `_${left.listKey}_${left.path}_many`;
         if (right) {
           const leftKey = `${left.listKey}.${left.path}`;
           const rightKey = `${right.listKey}.${right.path}`;
           rel.columnNames = {
-            [leftKey]: { near: `${left.listKey}_left_id`, far: `${right.listKey}_right_id` },
-            [rightKey]: { near: `${right.listKey}_right_id`, far: `${left.listKey}_left_id` },
+            [leftKey]: { near: `A`, far: `B` },
+            [rightKey]: { near: `B`, far: `A` },
+            // [leftKey]: { near: `${left.listKey}_left_id`, far: `${right.listKey}_right_id` },
+            // [rightKey]: { near: `${right.listKey}_right_id`, far: `${left.listKey}_left_id` },
           };
         } else {
           const leftKey = `${left.listKey}.${left.path}`;
           const rightKey = `${left.config.ref}`;
           rel.columnNames = {
-            [leftKey]: { near: `${left.listKey}_left_id`, far: `${left.config.ref}_right_id` },
-            [rightKey]: { near: `${left.config.ref}_right_id`, far: `${left.listKey}_left_id` },
+            [leftKey]: { near: `B`, far: `A` },
+            [rightKey]: { near: `A`, far: `B` },
+            // [leftKey]: { near: `${left.listKey}_left_id`, far: `${left.config.ref}_right_id` },
+            // [rightKey]: { near: `${left.config.ref}_right_id`, far: `${left.listKey}_left_id` },
           };
         }
       } else if (cardinality === '1:1') {
@@ -523,8 +527,8 @@ module.exports = class Keystone {
   async connect(prismaClient) {
     const { adapters, name } = this;
     const rels = this._consolidateRelationships();
-    // const prisma = new prismaClient.PrismaClient({ log: ['query'] });
-    const prisma = new prismaClient.PrismaClient();
+    const prisma = new prismaClient.PrismaClient({ log: ['query'] });
+    // const prisma = new prismaClient.PrismaClient();
     await resolveAllKeys(mapKeys(adapters, adapter => adapter.connect({ name, rels, prisma })));
 
     // Now that the middlewares are done, and we're connected to the database,
@@ -767,6 +771,16 @@ Please use keystone.executeGraphQL instead. See https://www.keystonejs.com/discu
                     `${f.path}    ${r.right.refListKey}?      @relation("${r.tableName}${r.columnName}")`,
                   ];
                 }
+              } else if (r.cardinality === 'N:N') {
+                if (isLeft) {
+                  return [
+                    `${f.path}    ${r.left.refListKey}[]    @relation("${r.tableName.slice(1)}", references: [id])`,
+                  ];
+                } else {
+                  return [
+                    `${f.path}    ${r.right.refListKey}[]    @relation("${r.tableName.slice(1)}", references: [id])`,
+                  ];
+                }
               }
             })
         ),
@@ -787,7 +801,7 @@ generator client {
   output = "generated-client"
 }
 `;
-    // console.log(header + foo.join('\n'));
+    console.log(header + foo.join('\n'));
     return header + foo.join('\n');
 
     //     return `datasource postgresql {
