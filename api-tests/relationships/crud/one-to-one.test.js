@@ -93,7 +93,7 @@ const getCompanyAndLocation = async (keystone, companyId, locationId) => {
   return data;
 };
 
-multiAdapterRunners('knex').map(({ runner, adapterName }) =>
+multiAdapterRunners().map(({ runner, adapterName }) =>
   describe(`Adapter: ${adapterName}`, () => {
     // 1:1 relationships are symmetric in how they behave, but
     // are (in general) implemented in a non-symmetric way. For example,
