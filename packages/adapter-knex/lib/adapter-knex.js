@@ -570,7 +570,7 @@ class KnexListAdapter extends BaseListAdapter {
 
     const model = this.prisma[modelName];
     // const prismaResult = await model.count(prismaFilter({ args, meta, from }));
-    const filter = prismaFilter({ args, meta, from });
+    const filter = prismaFilter({ listAdapter: this, args, meta, from });
     // console.log({ filter });
     let ret;
     if (meta) {
@@ -602,54 +602,21 @@ class KnexListAdapter extends BaseListAdapter {
   }
 }
 
-const prismaFilter = ({ args, meta, from }) => {
+const prismaFilter = ({
+  listAdapter,
+  args: { where = {}, first, skip, sortBy, orderBy },
+  meta,
+  from,
+}) => {
   const ret = {};
-  if (args.first) {
-    ret.take = args.first;
+  const allWheres = processWheres(where, listAdapter);
+  // console.log({ allWheres });
+  if (Object.keys(allWheres).length === 1) {
+    ret.where = allWheres[0];
+  } else if (Object.keys(allWheres).length > 1) {
+    ret.where = { AND: allWheres };
   }
-  if (args.sortBy) {
-    const [foo, bar] = args.sortBy[0].split('_');
-    // console.log({ foo, bar });
-    ret.orderBy = { [foo]: bar.toLowerCase() };
-  }
-  if (args.where) {
-    const { where } = args;
-    // console.log({ where });
-    ret.where = {};
-    Object.entries(where).forEach(([k, v]) => {
-      // console.log({ k, v });
-      if (k === 'id') {
-        ret.where[k] = Number(v);
-      } else if (k === 'company') {
-        ret.where[k] = {};
-        Object.entries(v).forEach(([kk, vv]) => {
-          ret.where[k][kk.split('_')[0]] = { [kk.split('_')[1]]: vv };
-        });
-      } else if (k === 'locations_some') {
-        ret.where[k.split('_')[0]] = {};
-        Object.entries(v).forEach(([kk, vv]) => {
-          ret.where[k.split('_')[0]]['some'] = { [kk]: vv };
-        });
-      } else if (k === 'locations_none') {
-        ret.where[k.split('_')[0]] = {};
-        Object.entries(v).forEach(([kk, vv]) => {
-          ret.where[k.split('_')[0]]['none'] = { [kk]: vv };
-        });
-      } else if (k === 'locations_every') {
-        ret.where[k.split('_')[0]] = {};
-        Object.entries(v).forEach(([kk, vv]) => {
-          ret.where[k.split('_')[0]]['every'] = { [kk]: vv };
-        });
-      }
-    });
 
-    // ret.where = where;
-
-    // if (ret.where.id) {
-    //   ret.where.id = Number(ret.where.id);
-    // }
-    // console.log(ret.where);
-  }
   if (from.fromId) {
     if (!ret.where) {
       ret.where = {};
@@ -660,7 +627,72 @@ const prismaFilter = ({ args, meta, from }) => {
     ret.where[columnName] = { id: Number(from.fromId) };
   }
 
+  // Add query modifiers as required
+  if (!meta) {
+    if (first !== undefined) {
+      // SELECT ... LIMIT <first>
+      ret.take = first;
+    }
+    if (skip !== undefined) {
+      // SELECT ... OFFSET <skip>
+      ret.skip = skip;
+    }
+    if (orderBy !== undefined) {
+      // SELECT ... ORDER BY <orderField>
+      const [orderField, orderDirection] = orderBy.split('_');
+      const sortKey = listAdapter.fieldAdaptersByPath[orderField].sortKey || orderField;
+      ret.orderBy = { [sortKey]: orderDirection.toLowerCase() };
+    }
+    if (sortBy !== undefined) {
+      // SELECT ... ORDER BY <orderField>[, <orderField>, ...]
+      if (!ret.orderBy) ret.orderBy = {};
+      sortBy.forEach(s => {
+        const [orderField, orderDirection] = s.split('_');
+        const sortKey = listAdapter.fieldAdaptersByPath[orderField].sortKey || orderField;
+        ret.orderBy[sortKey] = orderDirection.toLowerCase();
+      });
+    }
+  }
+
   return ret;
+};
+
+const processWheres = (where, listAdapter) => {
+  // console.log({ where });
+  const wheres = [];
+  for (const [condition, value] of Object.entries(where)) {
+    // See if any of our fields know what to do with this condition
+    const [path, conditionType] = condition.split('_', 2);
+    let fieldAdapter = listAdapter.fieldAdaptersByPath[path];
+    // FIXME: ask the field adapter if it supports the condition type
+    const supported = fieldAdapter && fieldAdapter.getQueryConditions()[path];
+    if (supported) {
+      wheres.push({
+        [fieldAdapter.dbPath]: {
+          [conditionType || 'equals']: path === 'id' ? Number(value) : value,
+        },
+      });
+    } else if (path === 'AND' || path === 'OR') {
+      wheres.push({ [path]: value.map(w => processWheres(w, listAdapter)) });
+    } else {
+      let fieldAdapter = listAdapter.fieldAdaptersByPath[condition];
+      // We have a relationship field
+      if (fieldAdapter) {
+        // Non-many relationship. Traverse the sub-query, using the referenced list as a root.
+        const otherListAdapter = listAdapter.getListAdapterByKey(fieldAdapter.refListKey);
+        wheres.push({ [path]: { AND: processWheres(value, otherListAdapter) } });
+      } else {
+        // Many relationship
+        const [p, constraintType] = condition.split('_');
+        fieldAdapter = listAdapter.fieldAdaptersByPath[p];
+        const otherList = fieldAdapter.refListKey;
+        const otherListAdapter = listAdapter.getListAdapterByKey(otherList);
+        wheres.push({ [p]: { [constraintType]: { AND: processWheres(value, otherListAdapter) } } });
+      }
+    }
+  }
+
+  return wheres;
 };
 
 class QueryBuilder {

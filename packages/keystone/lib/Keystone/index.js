@@ -755,6 +755,18 @@ Please use keystone.executeGraphQL instead. See https://www.keystonejs.com/discu
                     `${f.path}Id  Int? @map("${r.columnName}")`,
                   ];
                 }
+              } else if (r.cardinality === '1:1') {
+                // console.log({ r, isLeft });
+                if (isLeft) {
+                  return [
+                    `${f.path}    ${r.left.refListKey}?    @relation("${r.tableName}${r.columnName}", fields: [${r.columnName}Id], references: [id])`,
+                    `${f.path}Id  Int? @map("${r.columnName}")`,
+                  ];
+                } else {
+                  return [
+                    `${f.path}    ${r.right.refListKey}?      @relation("${r.tableName}${r.columnName}")`,
+                  ];
+                }
               }
             })
         ),

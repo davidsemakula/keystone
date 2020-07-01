@@ -190,6 +190,7 @@ multiAdapterRunners('knex').map(({ runner, adapterName }) =>
                 }
             `,
               });
+              // console.log(errors);
               expect(errors).toBe(undefined);
               expect(data.createCompany.location.id.toString()).toBe(location.id.toString());
 

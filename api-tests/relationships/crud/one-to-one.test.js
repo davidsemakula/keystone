@@ -89,6 +89,7 @@ const getCompanyAndLocation = async (keystone, companyId, locationId) => {
     Location(where: { id: "${locationId}"} ) { id company { id } }
   }`,
   });
+  console.log(data);
   return data;
 };
 
@@ -126,7 +127,7 @@ multiAdapterRunners('knex').map(({ runner, adapterName }) =>
 
     [
       [createListsLR, 'Left -> Right'],
-      [createListsRL, 'Right -> Left'],
+      // [createListsRL, 'Right -> Left'],
     ].forEach(([createLists, order]) => {
       describe(`One-to-one relationships - ${order}`, () => {
         function setupKeystone(adapterName) {
@@ -137,8 +138,8 @@ multiAdapterRunners('knex').map(({ runner, adapterName }) =>
           });
         }
 
-        describe('Read', () => {
-          test(
+        describe.only('Read', () => {
+          test.only(
             'Where A',
             runner(setupKeystone, async ({ keystone }) => {
               await createInitialData(keystone);
