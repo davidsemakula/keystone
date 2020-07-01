@@ -638,17 +638,11 @@ const prismaFilter = ({
     }
     const a = from.fromList.adapter.fieldAdaptersByPath[from.fromField];
     if (a.rel.cardinality === 'N:N') {
-      // console.log(a.rel);
-      // const { near, far } = from.fromList.adapter._getNearFar(a);
-      // ret.where[]
       const { near } = from.fromList.adapter._getNearFar(a);
-      // console.log({ near, far });
-
-      const f = near === 'B' ? a.rel.left  : a.rel.right;
-      ret.where[f.path] = { some: { id: Number(from.fromId) } };
+      const f = near === 'B' ? a.rel.left : a.rel.right;
+      ret.where[f ? f.path : `from_${a.rel.left.path}`] = { some: { id: Number(from.fromId) } };
     } else {
       const { columnName } = a.rel;
-      // console.log({ cardinality, tableName, columnName });
       ret.where[columnName] = { id: Number(from.fromId) };
     }
   }
@@ -682,7 +676,7 @@ const prismaFilter = ({
 
   listAdapter.fieldAdapters
     .filter(a => a.isRelationship && a.rel.cardinality === '1:1' && a.rel.right === a.field)
-    .forEach(({ path, rel }) => {
+    .forEach(({ path }) => {
       if (!ret.include) ret.include = {};
       ret.include[path] = true;
     });
@@ -691,7 +685,6 @@ const prismaFilter = ({
 };
 
 const processWheres = (where, listAdapter) => {
-  // console.log({ where });
   const wheres = [];
   for (const [condition, value] of Object.entries(where)) {
     // See if any of our fields know what to do with this condition
@@ -724,6 +717,7 @@ const processWheres = (where, listAdapter) => {
       }
     }
   }
+  // console.log(where, wheres);
   return wheres;
 };
 

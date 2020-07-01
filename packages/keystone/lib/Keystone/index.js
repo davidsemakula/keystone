@@ -494,12 +494,20 @@ module.exports = class Keystone {
         } else {
           const leftKey = `${left.listKey}.${left.path}`;
           const rightKey = `${left.config.ref}`;
-          rel.columnNames = {
-            [leftKey]: { near: `B`, far: `A` },
-            [rightKey]: { near: `A`, far: `B` },
-            // [leftKey]: { near: `${left.listKey}_left_id`, far: `${left.config.ref}_right_id` },
-            // [rightKey]: { near: `${left.config.ref}_right_id`, far: `${left.listKey}_left_id` },
-          };
+          if (left.listKey.localeCompare(left.refListKey) > 0) {
+            // left comes after right, so it's the B column
+            rel.columnNames = {
+              [leftKey]: { near: `B`, far: `A` },
+              [rightKey]: { near: `A`, far: `B` },
+            };
+          } else {
+            rel.columnNames = {
+              [leftKey]: { near: `A`, far: `B` },
+              [rightKey]: { near: `B`, far: `A` },
+              // [leftKey]: { near: `${left.listKey}_left_id`, far: `${left.config.ref}_right_id` },
+              // [rightKey]: { near: `${left.config.ref}_right_id`, far: `${left.listKey}_left_id` },
+            };
+          }
         }
       } else if (cardinality === '1:1') {
         tableName = left.listKey;
@@ -772,16 +780,30 @@ Please use keystone.executeGraphQL instead. See https://www.keystonejs.com/discu
                   ];
                 }
               } else if (r.cardinality === 'N:N') {
+                const tableName = r.tableName.slice(1);
                 if (isLeft) {
                   return [
-                    `${f.path}    ${r.left.refListKey}[]    @relation("${r.tableName.slice(1)}", references: [id])`,
+                    `${f.path}    ${r.left.refListKey}[]    @relation("${tableName}", references: [id])`,
                   ];
                 } else {
                   return [
-                    `${f.path}    ${r.right.refListKey}[]    @relation("${r.tableName.slice(1)}", references: [id])`,
+                    `${f.path}    ${r.right.refListKey}[]    @relation("${tableName}", references: [id])`,
                   ];
                 }
               }
+            })
+        ),
+        ...flatten(
+          rels
+            .filter(({ right }) => !right)
+            .filter(({ left }) => left.refListKey === list.key)
+            .filter(({ cardinality }) => cardinality === 'N:N')
+            .map(r => {
+              // console.log({ r });
+              const tableName = r.tableName.slice(1);
+              return [
+                `from_${r.left.path}    ${r.left.listKey}[]    @relation("${tableName}", references: [id])`,
+              ];
             })
         ),
       ];
@@ -801,7 +823,7 @@ generator client {
   output = "generated-client"
 }
 `;
-    console.log(header + foo.join('\n'));
+    // console.log(header + foo.join('\n'));
     return header + foo.join('\n');
 
     //     return `datasource postgresql {
