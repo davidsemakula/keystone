@@ -54,7 +54,7 @@ mutation {
 };
 
 const getCompanyAndLocation = async (keystone, companyId, locationId) => {
-  const { data, errors } = await graphqlRequest({
+  const { data } = await graphqlRequest({
     keystone,
     query: `
   {

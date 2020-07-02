@@ -535,8 +535,8 @@ module.exports = class Keystone {
   async connect(prismaClient) {
     const { adapters, name } = this;
     const rels = this._consolidateRelationships();
-    const prisma = new prismaClient.PrismaClient({ log: ['query'] });
-    // const prisma = new prismaClient.PrismaClient();
+    // const prisma = new prismaClient.PrismaClient({ log: ['query'] });
+    const prisma = new prismaClient.PrismaClient();
     await resolveAllKeys(mapKeys(adapters, adapter => adapter.connect({ name, rels, prisma })));
 
     // Now that the middlewares are done, and we're connected to the database,

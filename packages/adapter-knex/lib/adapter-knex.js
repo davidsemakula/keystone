@@ -625,11 +625,10 @@ const prismaFilter = ({
 }) => {
   const ret = {};
   const allWheres = processWheres(where, listAdapter);
+
   // console.log({ allWheres });
-  if (Object.keys(allWheres).length === 1) {
-    ret.where = allWheres[0];
-  } else if (Object.keys(allWheres).length > 1) {
-    ret.where = { AND: allWheres };
+  if (allWheres) {
+    ret.where = allWheres;
   }
 
   if (from.fromId) {
@@ -638,9 +637,20 @@ const prismaFilter = ({
     }
     const a = from.fromList.adapter.fieldAdaptersByPath[from.fromField];
     if (a.rel.cardinality === 'N:N') {
+      // console.log('HMMM');
+      // console.log({ a });
+      // console.log(a.rel);
       const { near } = from.fromList.adapter._getNearFar(a);
-      const f = near === 'B' ? a.rel.left : a.rel.right;
-      ret.where[f ? f.path : `from_${a.rel.left.path}`] = { some: { id: Number(from.fromId) } };
+      // console.log({ near, far });
+      if (a.rel.right) {
+        // two-sided
+        const f = near === 'B' ? a.rel.left : a.rel.right;
+        ret.where[f.path] = { some: { id: Number(from.fromId) } };
+      } else {
+        // : `from_${a.rel.left.path}`
+        const p = a !== a.rel.left ? `from_${a.rel.left.path}` : a.rel.left.path;
+        ret.where[p] = { some: { id: Number(from.fromId) } };
+      }
     } else {
       const { columnName } = a.rel;
       ret.where[columnName] = { id: Number(from.fromId) };
@@ -681,6 +691,7 @@ const prismaFilter = ({
       ret.include[path] = true;
     });
 
+  // console.log(ret);
   return ret;
 };
 
@@ -706,19 +717,25 @@ const processWheres = (where, listAdapter) => {
       if (fieldAdapter) {
         // Non-many relationship. Traverse the sub-query, using the referenced list as a root.
         const otherListAdapter = listAdapter.getListAdapterByKey(fieldAdapter.refListKey);
-        wheres.push({ [path]: { AND: processWheres(value, otherListAdapter) } });
+        wheres.push({ [path]: processWheres(value, otherListAdapter) });
       } else {
         // Many relationship
         const [p, constraintType] = condition.split('_');
         fieldAdapter = listAdapter.fieldAdaptersByPath[p];
         const otherList = fieldAdapter.refListKey;
         const otherListAdapter = listAdapter.getListAdapterByKey(otherList);
-        wheres.push({ [p]: { [constraintType]: { AND: processWheres(value, otherListAdapter) } } });
+        wheres.push({ [p]: { [constraintType]: processWheres(value, otherListAdapter) } });
       }
     }
   }
   // console.log(where, wheres);
-  return wheres;
+  if (wheres.length === 0) {
+    return;
+  } else if (wheres.length === 1) {
+    return wheres[0];
+  } else {
+    return { AND: wheres };
+  }
 };
 
 class QueryBuilder {
