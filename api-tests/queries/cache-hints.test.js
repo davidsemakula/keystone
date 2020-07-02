@@ -17,26 +17,49 @@ function setupKeystone(adapterName) {
           title: { type: Text },
           author: { type: Relationship, ref: 'User.posts', many: true },
         },
-        cacheHint: { scope: 'PUBLIC', maxAge: 100 },
+        cacheHint: {
+          scope: 'PUBLIC',
+          maxAge: 100,
+        },
       });
 
       keystone.createList('User', {
         fields: {
-          name: { type: Text, cacheHint: { maxAge: 80 } },
-          favNumber: { type: Integer, cacheHint: { maxAge: 10, scope: 'PRIVATE' } },
+          name: {
+            type: Text,
+            cacheHint: {
+              maxAge: 80,
+            },
+          },
+          favNumber: {
+            type: Integer,
+            cacheHint: {
+              maxAge: 10,
+              scope: 'PRIVATE',
+            },
+          },
           posts: { type: Relationship, ref: 'Post.author', many: true },
         },
         cacheHint: ({ results, operationName, meta }) => {
           if (meta) {
-            return { scope: 'PUBLIC', maxAge: 90 };
+            return {
+              scope: 'PUBLIC',
+              maxAge: 90,
+            };
           }
           if (operationName === 'complexQuery') {
-            return { maxAge: 1 };
+            return {
+              maxAge: 1,
+            };
           }
           if (results.length === 0) {
-            return { maxAge: 5 };
+            return {
+              maxAge: 5,
+            };
           }
-          return { maxAge: 100 };
+          return {
+            maxAge: 100,
+          };
         },
       });
     },
@@ -81,6 +104,7 @@ multiAdapterRunners().map(({ runner, adapterName }) =>
               }
             `,
           });
+
           expect(errors).toBe(undefined);
           expect(data).toHaveProperty('allUsers');
           expect(res.headers['cache-control']).toBe('max-age=80, public');
