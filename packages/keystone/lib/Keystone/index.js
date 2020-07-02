@@ -730,11 +730,11 @@ Please use keystone.executeGraphQL instead. See https://www.keystonejs.com/discu
 
     // const fields = [];
     const foo = this.listsArray.map(list => {
-      // console.log(list.fields.filter(f => f.isRelationship));
+      // console.log(list.fields.filter(f => !f.isRelationship).map(f => f.constructor.name));
       const scalarFields = list.fields
         .filter(f => !f.isRelationship)
         .filter(f => f.path !== 'id')
-        .map(f => `${f.path}      String?`)
+        .map(f => `${f.path}      ${f.constructor.name === 'Integer' ? 'Int' : 'String'}?`)
         .filter(x => x);
       const relFields = [
         ...flatten(

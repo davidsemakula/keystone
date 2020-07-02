@@ -97,7 +97,7 @@ multiAdapterRunners().map(({ runner, adapterName }) =>
           // Avoid false-positives by checking the database directly
           const eventData = await findById('Event', createEvent.id);
 
-          expect(eventData).toHaveProperty('group', null);
+          expect(eventData).toHaveProperty('groupId', null);
         })
       );
 
@@ -252,8 +252,8 @@ multiAdapterRunners().map(({ runner, adapterName }) =>
             // Avoid false-positives by checking the database directly
             const eventData = await findById('EventToGroupNoRead', createEvent.id);
 
-            expect(eventData).toHaveProperty('group');
-            expect(eventData.group).toBe(null);
+            expect(eventData).toHaveProperty('groupId');
+            expect(eventData.groupId).toBe(null);
           })
         );
 

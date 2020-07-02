@@ -577,18 +577,30 @@ class KnexListAdapter extends BaseListAdapter {
   async _itemsQuery(args, { meta = false, from = {} } = {}) {
     // console.log('QUERY');
     // console.log(this);
-    const modelName = this.key.toLowerCase();
+    const modelName = this.key.slice(0, 1).toLowerCase() + this.key.slice(1);
     // console.log({ modelName, args, meta, from });
     const query = new QueryBuilder(this, args, { meta, from }).get();
     const results = await query;
-
+    // console.log({ modelName });
     const model = this.prisma[modelName];
+    // console.log(this.prisma);
+    // console.log({ model });
     // const prismaResult = await model.count(prismaFilter({ args, meta, from }));
     const filter = prismaFilter({ listAdapter: this, args, meta, from });
     // console.log({ filter });
     let ret;
     if (meta) {
-      ret = { count: await model.count(filter) };
+      let count = await model.count(filter);
+      const { first, skip } = args;
+      // Adjust the count as appropriate
+      if (skip !== undefined) {
+        count -= skip;
+      }
+      if (first !== undefined) {
+        count = Math.min(count, first);
+      }
+      count = Math.max(0, count); // Don't want to go negative from a skip!
+      return { count };
     } else {
       ret = await model.findMany(filter);
     }
@@ -699,14 +711,19 @@ const processWheres = (where, listAdapter) => {
   const wheres = [];
   for (const [condition, value] of Object.entries(where)) {
     // See if any of our fields know what to do with this condition
-    const [path, conditionType] = condition.split('_', 2);
+    // console.log({ condition });
+    const [path, ..._conditionType] = condition.split('_');
+    const conditionType = _conditionType.join('_');
     let fieldAdapter = listAdapter.fieldAdaptersByPath[path];
     // FIXME: ask the field adapter if it supports the condition type
     const supported = fieldAdapter && fieldAdapter.getQueryConditions()[path];
     if (supported) {
+      // console.log({ conditionType, value });
+      let ct = conditionType || 'equals';
+      if (conditionType === 'starts_with') ct = 'startsWith';
       wheres.push({
         [fieldAdapter.dbPath]: {
-          [conditionType || 'equals']: path === 'id' ? Number(value) : value,
+          [ct]: path === 'id' ? (ct === 'in' ? value.map(x => Number(x)) : Number(value)) : value,
         },
       });
     } else if (path === 'AND' || path === 'OR') {
