@@ -34,9 +34,7 @@ const { CustomProvider, ListAuthProvider, ListCRUDProvider } = require('../provi
 module.exports = class Keystone {
   constructor({
     defaultAccess,
-    adapters,
     adapter,
-    defaultAdapter,
     name,
     onConnect,
     cookieSecret,
@@ -87,12 +85,8 @@ module.exports = class Keystone {
       }),
     ];
 
-    if (adapters) {
-      this.adapters = adapters;
-      this.defaultAdapter = defaultAdapter;
-    } else if (adapter) {
-      this.adapters = { [adapter.constructor.name]: adapter };
-      this.defaultAdapter = adapter.constructor.name;
+    if (adapter) {
+      this.adapter = adapter;
     } else {
       throw new Error('No database adapter provided');
     }
@@ -347,8 +341,7 @@ module.exports = class Keystone {
   }
 
   createList(key, config, { isAuxList = false } = {}) {
-    const { getListByKey, adapters } = this;
-    const adapterName = config.adapterName || this.defaultAdapter;
+    const { getListByKey, adapter } = this;
     const isReservedName = !isAuxList && key[0] === '_';
 
     if (isReservedName) {
@@ -364,7 +357,7 @@ module.exports = class Keystone {
       {
         getListByKey,
         queryHelper: this._buildQueryHelper.bind(this),
-        adapter: adapters[adapterName],
+        adapter,
         defaultAccess: this.defaultAccess,
         registerType: type => this.registeredTypes.add(type),
         isAuxList,
@@ -521,9 +514,9 @@ module.exports = class Keystone {
    * constructor, or `undefined` if no `onConnect` method specified.
    */
   async connect() {
-    const { adapters, name } = this;
+    const { adapter, name } = this;
     const rels = this._consolidateRelationships();
-    await resolveAllKeys(mapKeys(adapters, adapter => adapter.connect({ name, rels })));
+    await adapter.connect({ name, rels });
 
     // Now that the middlewares are done, and we're connected to the database,
     // it's safe to assume all the schemas are registered, so we can setup our
@@ -550,7 +543,7 @@ Please use keystone.executeGraphQL instead. See https://www.keystonejs.com/discu
    * @return Promise<null>
    */
   async disconnect() {
-    await resolveAllKeys(mapKeys(this.adapters, adapter => adapter.disconnect()));
+    await this.adapter.disconnect();
   }
 
   getAdminMeta({ schemaName }) {
