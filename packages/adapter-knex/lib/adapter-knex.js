@@ -703,12 +703,39 @@ const processWheres = (where, listAdapter) => {
     if (supported) {
       // console.log({ conditionType, value });
       let ct = conditionType || 'equals';
-      if (conditionType === 'starts_with') ct = 'startsWith';
-      wheres.push({
-        [fieldAdapter.dbPath]: {
-          [ct]: path === 'id' ? (ct === 'in' ? value.map(x => Number(x)) : Number(value)) : value,
-        },
-      });
+      const negate = ct.startsWith('not_');
+      if (negate) ct = ct.slice(4);
+      // console.log({ negate, ct });
+      if (ct === 'starts_with') ct = 'startsWith';
+      if (ct === 'ends_with') ct = 'endsWith';
+      if (ct === 'not_in') ct = 'notIn';
+      if (negate) {
+        wheres.push({
+          OR: [
+            {
+              NOT: {
+                [fieldAdapter.dbPath]: {
+                  [ct]:
+                    path === 'id'
+                      ? ct === 'in'
+                        ? value.map(x => Number(x))
+                        : Number(value)
+                      : value,
+                },
+              },
+            },
+            {
+              [fieldAdapter.dbPath]: null,
+            },
+          ],
+        });
+      } else {
+        wheres.push({
+          [fieldAdapter.dbPath]: {
+            [ct]: path === 'id' ? (ct === 'in' ? value.map(x => Number(x)) : Number(value)) : value,
+          },
+        });
+      }
     } else if (path === 'AND' || path === 'OR') {
       wheres.push({ [path]: value.map(w => processWheres(w, listAdapter)) });
     } else {
@@ -728,7 +755,7 @@ const processWheres = (where, listAdapter) => {
       }
     }
   }
-  // console.log(where, wheres);
+  // console.log(where, wheres[0]);
   if (wheres.length === 0) {
     return;
   } else if (wheres.length === 1) {
