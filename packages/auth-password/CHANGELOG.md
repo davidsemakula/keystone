@@ -1,5 +1,12 @@
 # @keystonejs/auth-password
 
+## 5.1.11
+
+### Patch Changes
+
+- Updated dependencies [[`136cb505c`](https://github.com/keystonejs/keystone/commit/136cb505ce11931de7fc470debe438e335588781)]:
+  - @keystonejs/session@8.0.0
+
 ## 5.1.10
 
 ### Patch Changes

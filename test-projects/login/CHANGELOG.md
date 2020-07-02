@@ -1,5 +1,17 @@
 # @keystonejs/cypress-project-login
 
+## 5.1.13
+
+### Patch Changes
+
+- Updated dependencies [[`136cb505c`](https://github.com/keystonejs/keystone/commit/136cb505ce11931de7fc470debe438e335588781), [`56e1798d6`](https://github.com/keystonejs/keystone/commit/56e1798d6815723cfba01e6d7dc6b4fe73d4447b), [`81b4df318`](https://github.com/keystonejs/keystone/commit/81b4df3182fc63c583e3fae5c05c528b678cab95)]:
+  - @keystonejs/session@8.0.0
+  - @keystonejs/keystone@12.0.0
+  - @keystonejs/app-admin-ui@7.0.6
+  - @keystonejs/app-graphql@5.1.10
+  - @keystonejs/auth-password@5.1.11
+  - @keystonejs/adapter-mongoose@8.1.4
+
 ## 5.1.12
 
 ### Patch Changes

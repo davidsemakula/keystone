@@ -1,5 +1,50 @@
 # @keystonejs/keystone
 
+## 12.0.0
+
+### Major Changes
+
+- [`56e1798d6`](https://github.com/keystonejs/keystone/commit/56e1798d6815723cfba01e6d7dc6b4fe73d4447b) [#3169](https://github.com/keystonejs/keystone/pull/3169) Thanks [@timleslie](https://github.com/timleslie)! - Resolver functions for custom queries and mutations no longer recieve a `{ query }` argument. This functionality has been superseded by `context.executeGraphQL()`.
+
+  ```
+  keystone.extendGraphQLSchema({
+    queries: {
+      schema: '...',
+      resolver: async (item, args, context, info, { query }) => {
+        ...
+        const { data, errors } = await query(`{ ... }`);
+        ...
+      }
+    }
+  });
+  ```
+
+  should be changed to
+
+  ```
+  keystone.extendGraphQLSchema({
+    queries: {
+      schema: '...',
+      resolver: async (item, args, context) => {
+        ...
+        const { data, errors } = await context.executeGraphQL({ query: `{ ... }` });
+        ...
+      }
+    }
+  });
+  ```
+
+  See [the docs](/docs/discussions/server-side-graphql.md) for more details on how to use `context.executeGraphQL()`.
+
+* [`81b4df318`](https://github.com/keystonejs/keystone/commit/81b4df3182fc63c583e3fae5c05c528b678cab95) [#3172](https://github.com/keystonejs/keystone/pull/3172) Thanks [@timleslie](https://github.com/timleslie)! - Removed the method `keystone.executeQuery()`, which has been superseded by `keystone.executeGraphQL()`.
+  See [the docs](/docs/discussions/server-side-graphql.md) for more details on how to use `keystone.executeGraphQL()`.
+
+### Patch Changes
+
+- Updated dependencies [[`136cb505c`](https://github.com/keystonejs/keystone/commit/136cb505ce11931de7fc470debe438e335588781)]:
+  - @keystonejs/session@8.0.0
+  - @keystonejs/test-utils@7.0.2
+
 ## 11.2.0
 
 ### Minor Changes

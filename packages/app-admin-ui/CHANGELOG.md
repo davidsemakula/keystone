@@ -1,5 +1,12 @@
 # @keystonejs/app-admin-ui
 
+## 7.0.6
+
+### Patch Changes
+
+- Updated dependencies [[`136cb505c`](https://github.com/keystonejs/keystone/commit/136cb505ce11931de7fc470debe438e335588781)]:
+  - @keystonejs/session@8.0.0
+
 ## 7.0.5
 
 ### Patch Changes
